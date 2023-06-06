@@ -1,4 +1,4 @@
-package study.datajpa.repository;
+package study.datajpa.section1_4_repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import study.datajpa.entity.Team;

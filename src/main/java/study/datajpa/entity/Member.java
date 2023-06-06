@@ -4,6 +4,11 @@ import lombok.*;
 
 import javax.persistence.*;
 
+
+@NamedQuery(
+        name = "Member.findByUsername",
+        query = "select m from Member m where m.username = :username "
+        )
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 기본생성자 protected level 까지만 가능
@@ -27,6 +32,11 @@ public class Member {
         this.username = username;
     }
 
+    public Member(String username, int age) {
+        this.username = username;
+        this.age = age;
+    }
+
     public Member(String username, int age, Team team) {
         this.username = username;
         this.age = age;
@@ -34,6 +44,7 @@ public class Member {
             changeTeam(team);
         }
     }
+
 
     public void changeUserName(String username){
         this.username = username;

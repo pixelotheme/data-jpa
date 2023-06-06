@@ -1,11 +1,10 @@
-package study.datajpa.repository;
+package study.datajpa.section1_4_repository;
 
 import org.springframework.stereotype.Repository;
 import study.datajpa.entity.Team;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
-import javax.swing.text.html.Option;
 import java.util.List;
 import java.util.Optional;
 
