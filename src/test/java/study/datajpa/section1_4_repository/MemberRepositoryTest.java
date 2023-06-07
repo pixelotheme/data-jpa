@@ -14,81 +14,12 @@ import study.datajpa.dto.MemberDto;
 import study.datajpa.entity.Member;
 import study.datajpa.entity.Team;
 
-import java.util.ArrayList;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * springDataJPA 사용 test
- * <p>
- * 설정 - DataJpaApplication 클래스
- * <p>
- * * JavaConfig 설정- 스프링 부트 사용시 생략 가능
- * *
- * * @Configuration
- * * @EnableJpaRepositories(basePackages = "jpabook.jpashop.repository")
- * * public class AppConfig {}
- * *
- * * 스프링 부트 사용시 @SpringBootApplication 어노테이션의 위치를 자동으로 지정(해당 패키지와 하위 패키지 인식)
- * * -> 만약 위치가 달라지면 @EnableJpaRepositories 필요
- * *
- * <p>
- * ===============
- * Optional<Member> - 값이 있을수도 있고 없을수도 있는 optional 사용
- * <p>
- * //이렇게 가져오면 안된다~ optional 공부해서 잘 쓰자
- * Optional<Member> savedMember = memberRepository.findById(member.getId());
- * Member findMember = savedMember.get();
- * <p>
- * =================
- * memberRepository에 injection 된 객체의 정체가 뭔가?
- * <p>
- * memberRepository.getClass() = class com.sun.proxy.$Proxy121
- * <p>
- * -> 구현체는 SpringDataJpa가 구현하여 Injection 해준다
- * -> 즉 우리는 인터페이스만 만들어 주면 된다
- * <p>
- * 정리
- * -> org.springframework.data.repository.Repository 를 구현한 클래스는 스캔 대상
- * MemberRepository 인터페이스가 동작한 이유
- * 실제 출력해보기(Proxy)
- * memberRepository.getClass() class com.sun.proxy.$ProxyXXX
- *
- * @Repository 애노테이션 생략 가능
- * 컴포넌트 스캔을 스프링 데이터 JPA가 자동으로 처리 -> 구현체는 SpringDataJpa가 구현하여 Injection 해준다
- * JPA 예외를 스프링 예외로 변환하는 과정도 자동으로 처리
- * <p>
- * =====================
- * <p>
- * <p>
- * 주의
- * T findOne(ID) ->  Optional<T> findById(ID) 변경
- * boolean exists(ID) -> boolean existsById(ID) 변경
- * <p>
- * 제네릭 타입
- * T : 엔티티
- * ID : 엔티티의 식별자 타입
- * S : 엔티티와 그 자식 타입
- * <p>
- * 주요 메서드
- * save(S) : 새로운 엔티티는 저장하고 이미 있는 엔티티는 병합한다.
- * delete(T) : 엔티티 하나를 삭제한다. 내부에서 EntityManager.remove() 호출
- * findById(ID) : 엔티티 하나를 조회한다. 내부에서 EntityManager.find() 호출
- * getOne(ID) : 엔티티를 프록시로 조회한다. 내부에서 EntityManager.getReference() 호출
- * findAll(…) : 모든 엔티티를 조회한다. 정렬( Sort )이나 페이징( Pageable ) 조건을 파라미터로 제공할 수 있다.
- * <p>
- * > 참고: JpaRepository 는 대부분의 공통 메서드를 제공한다
- * <p>
- * =========================
- * <p>
- * 만약 공통기능이 아닌 다른기능이 필요할때는????
- * <p>
- * -> 인터페이스 Impl 받아 구현하기 위해 다른 메서드들을 override 로 직접 모두 구현해야하는 문제
- * -> 인터페이스에서 바로 구현하면 된다
- * <p>
- * --> 쿼리 메소드 기능 이다
- */
 
 @SpringBootTest
 @Transactional
@@ -100,6 +31,8 @@ class MemberRepositoryTest {
     MemberRepository memberRepository;
     @Autowired
     TeamRepository teamRepository;
+    @PersistenceContext
+    EntityManager em;
 
     @Test
     public void testSpringDataJpa() {
@@ -353,5 +286,107 @@ class MemberRepositoryTest {
         //다음 페이지가 있는지?
         Assertions.assertThat(page.hasNext()).isEqualTo(true);
 
+    }
+
+    @Test
+    public void bulkUpdate() {
+        memberRepository.save(new Member("AAA1", 10));
+        memberRepository.save(new Member("AAA2", 19));
+        memberRepository.save(new Member("AAA3", 20));
+        memberRepository.save(new Member("AAA4", 21));
+        memberRepository.save(new Member("AAA5", 30));
+        memberRepository.save(new Member("AAA6", 40));
+
+        // update 쿼리가 나가기 전에 JPA 쿼리 가 먼저 나간후
+        // JPQL 쿼리가 나간다 - flush 따로 안해줘도 된다
+        int resultCount = memberRepository.bulkAgePlus(20);
+
+        //@Modifying(clearAutomatically = true)  - 적용
+//        em.clear();
+
+        //flush 없이 호출하면 40 이 나온다 - 1차 캐시에 있는 데이터가 나옴
+        List<Member> aaa6 = memberRepository.findByUsername("AAA6");
+        Member member = aaa6.get(0);
+        System.out.println("member = " + member);
+
+        //then
+        Assertions.assertThat(resultCount).isEqualTo(4);
+
+    }
+
+    @Test
+    public void findMemberLazy() {
+        //member1 -> teamA
+        //member2 -> teamB
+
+        Team teamA = new Team("TeamA");
+        Team teamB = new Team("TeamB");
+        teamRepository.save(teamA);
+        teamRepository.save(teamB);
+        Member member1 = new Member("member1", 10, teamA);
+        Member member2 = new Member("member2", 10, teamB);
+        memberRepository.save(member1);
+        memberRepository.save(member2);
+
+        em.flush();
+        em.clear();
+
+        List<Member> members = memberRepository.findAll();
+        for (Member member : members) {
+            System.out.println("member = " + member.getUsername());
+            System.out.println("member.Team = " + member.getTeam().getName());
+        }
+    }
+
+    @Test
+    public void findMemberLazyFetchJoin() {
+        //member1 -> teamA
+        //member2 -> teamB
+
+        Team teamA = new Team("TeamA");
+        Team teamB = new Team("TeamB");
+        teamRepository.save(teamA);
+        teamRepository.save(teamB);
+        Member member1 = new Member("member1", 10, teamA);
+        Member member2 = new Member("member2", 10, teamB);
+        memberRepository.save(member1);
+        memberRepository.save(member2);
+
+        em.flush();
+        em.clear();
+
+        List<Member> members = memberRepository.findMemberFetchJoin();
+        for (Member member : members) {
+            System.out.println("member = " + member.getUsername());
+            System.out.println("member.Team = " + member.getTeam().getName());
+        }
+    }
+
+    @Test
+    public void queryHint() {
+        //given
+        Member member1 = new Member("member1", 10);
+        memberRepository.save(member1);
+        em.flush();
+        em.clear();
+
+        //when
+        //변경감지를 위해 기존 member 와 변경된 member를 비교하는 과정이 필요
+        // 스냅샷을 통해 .... 결국 2개의 객체를 관리하고 있는것
+//        Member findMember = memberRepository.findById(member1.getId()).get();
+//        findMember.changeUserName("member2");
+        //100% 조회용으로만 쓸경우 최적화 - hibernate는 제공하는데 jpa 는 제공 안함 그래서 hint를 줄수 있게 함
+
+        Member findMember = memberRepository.findReadOnlyByUsername(member1.getUsername());
+        findMember.changeUserName("member2");
+        em.flush();
+    }
+
+    @Test
+    public void Lock(){
+        Member member1 = new Member("member1", 10);
+        memberRepository.save(member1);
+
+        List<Member> lockByUsername = memberRepository.findLockByUsername(member1.getUsername());
     }
 }
