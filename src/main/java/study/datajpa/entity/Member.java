@@ -15,7 +15,8 @@ import javax.persistence.*;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 기본생성자 protected level 까지만 가능
 @ToString(of = {"id", "username", "age"}) // 연관관계 team엔티티 넣으면 무한 루프 돌수  있어 제거
-public class Member {
+//public class Member extends JpaBaseEntityAuditing{
+public class Member extends DataJpaBaseEntityAuditing{
 
     @Id
     @GeneratedValue

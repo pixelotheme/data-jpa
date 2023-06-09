@@ -436,10 +436,169 @@ import java.util.Optional;
  * List<Member> findLockByUsername(String username);
  *
  * -> LockModeType.PESSIMISTIC_WRITE - javax.persistence 패키지 :JPA 에서 지원
- * */
+ *
+ * ------------------------------
+ *
+/**
+ * 확장 기능
+ *
+ * * 사용자 정의 리포지토리 구현 *
+ *
+ * 스프링 데이터 JPA 리포지토리는 인터페이스만 정의하고 구현체는 스프링이 자동 생성
+ *
+ * 스프링 데이터 JPA가 제공하는 인터페이스를 직접 구현하면 구현해야 하는 기능이 너무 많음
+ * -> data JPA 를 사용하지 않고 ~ custom 화 하려면 ~ 순수 jpa 쓰듯이 해야하니 귀찮다는 뜻
+ *
+ * 다양한 이유로 인터페이스의 메서드를 직접 구현하고 싶다면?
+ * 1. JPA 직접 사용( EntityManager )
+ * 2. 스프링 JDBC Template 사용
+ * 3. MyBatis 사용
+ * 4. 데이터베이스 커넥션 직접 사용 등등...
+ * 5 .Querydsl 사용
+ *
+ *  custom 인터페이스 패키지가 다를시 에러가 난다,,,
+ *  1. MemberRepositoryCustom - Interface 생성
+ *  2. MemberRepositoryImpl - 구현 클래스 생성(MemberRepositoryCustom)
+ *  3. MemberRepository - DataJPA에 인터페이스 상속 (인터페이스라 다중상속 가능)
+ *
+ *  -> JAVA 기능이 아니라 DataJpa가 지원하는 기능이다
+ * Impl 구현 클래스에서 설명 계속 ....
+ *
+ * ==========================================
+ *
+ * Auditing
+ *
+ * 엔티티를 생성, 변경할 때 변경한 사람과 시간을 추적하고 싶으면?
+ * 등록일
+ * 수정일
+ * 등록자
+ * 수정자
+ *
+ * -> 등록일, 수정일의 경우 운영상 꼭 필요하다 언제 어디서 문제가 났는지 추적해야한다
+ *
+ * ----------
+ * 순수 JPA 사용
+ *
+ * JpaBaseEntity 클래스 확인
+ * @MappedSuperclass
+ * @PrePersist, @PostPersist
+ * @PreUpdate, @PostUpdate
+ * -----
+ *
+ * 스프링 데이터 JPA 사용
+ * 설정
+ * @EnableJpaAuditing 스프링 부트 설정 클래스에 적용해야함 - DataJpaPllication 클래스
+ *
+ * @EntityListeners(AuditingEntityListener.class) 엔티티에 적용 - DataJpaBaseEntityAuditing
+ *
+ * 사용 어노테이션
+ * @CreatedDate
+ * @LastModifiedDate
+ * @CreatedBy
+ * @LastModifiedBy
+ *
+ *
+ * 주의: DataJpaApplication 에 @EnableJpaAuditing 도 함께 등록해야 합니다.
+ * 실무에서는 세션 정보나, 스프링 시큐리티 로그인 정보에서 ID를 받음
+ *
+ * > 참고: 실무에서 대부분의 엔티티는 등록시간, 수정시간이 필요하지만, 등록자, 수정자는 없을 수도 있다. 그
+ * 래서 다음과 같이 Base 타입을 분리하고, 원하는 타입을 선택해서 상속한다.
+ *
+ * > 참고: 저장시점에 등록일, 등록자는 물론이고, 수정일, 수정자도 같은 데이터가 저장된다. 데이터가 중복 저
+ * 장되는 것 같지만, 이렇게 해두면 변경 컬럼만 확인해도 마지막에 업데이트한 유저를 확인 할 수 있으므로 유
+ * 지보수 관점에서 편리하다. 이렇게 하지 않으면 변경 컬럼이 null 일때 등록 컬럼을 또 찾아야 한다.
+ *
+ * > 참고로 저장시점에 저장데이터만 입력하고 싶으면 @EnableJpaAuditing(modifyOnCreate = false)
+ * 옵션을 사용하면 된다.
+ *
+
+ *
+ * ---- 엔티티 관련 클래스
+ @EntityListeners(AuditingEntityListener.class)
+ @MappedSuperclass
+ @Getter
+ public class DataJpaBaseEntityAuditing {
+
+ @CreatedDate
+ @Column(updatable = false)
+ private LocalDateTime createdDate;
+ @LastModifiedDate
+ private LocalDateTime lastModifiedDate;
+
+ @CreatedBy
+ @Column(updatable = false)
+ private String createdBy;
+
+ @LastModifiedBy
+ private String lastModifiedBy;
+ }
+
+ --- 프로젝트 설정 클래스 DataJpaApplication
+ @EnableJpaAuditing(modifyOnCreate = false) - update 는 null로 들어간다
+ @EnableJpaAuditing
+ @SpringBootApplication
+ //@EnableJpaRepositories(basePackages = "study.data-jpa.repository")
+ public class DataJpaApplication {
+
+ public static void main(String[] args) {
+ SpringApplication.run(DataJpaApplication.class, args);
+ }
 
 
-public interface MemberRepository extends JpaRepository<Member, Long> {
+ //수정자, 생성자 넣는방법
+ @Bean
+ public AuditorAware<String> auditorProvider111(){
+ //실무에서는 세션 정보나, 스프링 시큐리티 로그인 정보에서 ID를 받음 - 현재는 UUID를 임의로 사용
+ return new AuditorAware<String>() {
+ @Override
+ public Optional<String> getCurrentAuditor() {
+ return Optional.of(UUID.randomUUID().toString());
+ }
+ };
+ //인터페이스에서 메서드 하나면 람다로 바꿀수있다
+ //		return () -> Optional.of(UUID.randomUUID().toString());
+ }
+ }
+-----------------------------
+
+  * @EntityListeners(AuditingEntityListener.class) 를 생략하고 스프링 데이터 JPA 가 제공하는
+ * 이벤트를 엔티티 전체에 적용하려면 orm.xml에 다음과 같이 등록하면 된다.
+META-INF/orm.xml
+<?xml version=“1.0” encoding="UTF-8”?>
+<entity-mappings xmlns=“http://xmlns.jcp.org/xml/ns/persistence/orm”
+xmlns:xsi=“http://www.w3.org/2001/XMLSchema-instance”
+xsi:schemaLocation=“http://xmlns.jcp.org/xml/ns/persistence/
+orm http://xmlns.jcp.org/xml/ns/persistence/orm_2_2.xsd”
+version=“2.2">
+<persistence-unit-metadata>
+<persistence-unit-defaults>
+<entity-listeners>
+<entity-listener
+class="org.springframework.data.jpa.domain.support.AuditingEntityListener”/>
+</entity-listeners>
+</persistence-unit-defaults>
+</persistence-unit-metadata>
+
+</entity-mappings>
+
+
+--------------------
+*
+ * 실무에서는 어떤곳에는 일자만, 어떤곳에는 수정자 까지 ,,,
+ * 구분할때??
+ *
+ * 최상위
+ * BaseTime
+ *
+ * 최상위 상속받은 속성
+ * baseEntity - 생성자
+ *
+ *
+  * */
+
+
+
+public interface MemberRepository extends JpaRepository<Member, Long>, MemberRepositoryCustom {
 
     List<Member> findByUsernameAndAgeGreaterThan(String username, int age);
 

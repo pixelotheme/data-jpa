@@ -26,13 +26,22 @@ import java.util.Optional;
 @Rollback(value = false)
 class MemberRepositoryTest {
 
-
-    @Autowired
+    //테스트는 생성자 인젝션이 더 좋다
+//    @Autowired
     MemberRepository memberRepository;
-    @Autowired
+//    @Autowired
     TeamRepository teamRepository;
+
+    MemberQueryRepository_5 memberQueryRepository5;
     @PersistenceContext
     EntityManager em;
+
+    @Autowired
+    public MemberRepositoryTest(MemberRepository memberRepository, TeamRepository teamRepository, MemberQueryRepository_5 memberQueryRepository5) {
+        this.memberRepository = memberRepository;
+        this.teamRepository = teamRepository;
+        this.memberQueryRepository5 = memberQueryRepository5;
+    }
 
     @Test
     public void testSpringDataJpa() {
@@ -388,5 +397,28 @@ class MemberRepositoryTest {
         memberRepository.save(member1);
 
         List<Member> lockByUsername = memberRepository.findLockByUsername(member1.getUsername());
+    }
+
+
+    //순수 jpa entity MappedSuperclass 사용
+    @Test
+    public void JpaEventBaseEntity() throws Exception{
+        //given
+        Member member = new Member("member1");
+        memberRepository.save(member); // @PrePersist 발생
+
+        Thread.sleep(100);
+        member.changeUserName("member11");
+        //when
+        em.flush(); // @PreUpdate 발생
+        em.clear();
+
+        Member member1 = memberRepository.findById(member.getId()).get();
+        System.out.println("member1 = " + member1.getCreatedDate());
+        System.out.println("member1 = " + member1.getLastModifiedDate());
+        System.out.println("member1 = " + member1.getCreatedBy());
+        System.out.println("member1 = " + member1.getLastModifiedBy());
+        //then
+
     }
 }
