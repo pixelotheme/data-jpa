@@ -9,7 +9,7 @@ import javax.persistence.EntityManager;
 import java.util.List;
 
 /**
- * 복잡도를 낮추기위해 별도의 Repository를 만들어 줬다
+ * 확장기능 - 복잡도를 낮추기위해 별도의 Repository를 만들어 줬다
  *
  * */
 

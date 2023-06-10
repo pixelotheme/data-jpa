@@ -1,4 +1,4 @@
-package study.datajpa.controller;
+package study.datajpa.section5_domain_convertor_controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;

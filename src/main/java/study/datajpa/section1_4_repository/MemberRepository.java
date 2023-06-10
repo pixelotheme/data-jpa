@@ -563,23 +563,24 @@ import java.util.Optional;
 
   * @EntityListeners(AuditingEntityListener.class) 를 생략하고 스프링 데이터 JPA 가 제공하는
  * 이벤트를 엔티티 전체에 적용하려면 orm.xml에 다음과 같이 등록하면 된다.
-META-INF/orm.xml
-<?xml version=“1.0” encoding="UTF-8”?>
-<entity-mappings xmlns=“http://xmlns.jcp.org/xml/ns/persistence/orm”
-xmlns:xsi=“http://www.w3.org/2001/XMLSchema-instance”
-xsi:schemaLocation=“http://xmlns.jcp.org/xml/ns/persistence/
-orm http://xmlns.jcp.org/xml/ns/persistence/orm_2_2.xsd”
-version=“2.2">
-<persistence-unit-metadata>
-<persistence-unit-defaults>
-<entity-listeners>
-<entity-listener
-class="org.springframework.data.jpa.domain.support.AuditingEntityListener”/>
-</entity-listeners>
-</persistence-unit-defaults>
-</persistence-unit-metadata>
+ *
+    META-INF/orm.xml
+    <?xml version=“1.0” encoding="UTF-8”?>
+    <entity-mappings xmlns=“http://xmlns.jcp.org/xml/ns/persistence/orm”
+    xmlns:xsi=“http://www.w3.org/2001/XMLSchema-instance”
+    xsi:schemaLocation=“http://xmlns.jcp.org/xml/ns/persistence/
+    orm http://xmlns.jcp.org/xml/ns/persistence/orm_2_2.xsd”
+    version=“2.2">
+    <persistence-unit-metadata>
+    <persistence-unit-defaults>
+    <entity-listeners>
+    <entity-listener
+    class="org.springframework.data.jpa.domain.support.AuditingEntityListener”/>
+    </entity-listeners>
+    </persistence-unit-defaults>
+    </persistence-unit-metadata>
 
-</entity-mappings>
+    </entity-mappings>
 
 
 --------------------
