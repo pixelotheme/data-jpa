@@ -7,6 +7,10 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import study.datajpa.dto.MemberDto;
 import study.datajpa.entity.Member;
+import study.datajpa.section7_other_features.MemberProjection;
+import study.datajpa.section7_other_features.NestedClosedProjections;
+import study.datajpa.section7_other_features.UsernameOnly;
+import study.datajpa.section7_other_features.UsernameOnlyDto;
 
 import javax.persistence.LockModeType;
 import javax.persistence.QueryHint;
@@ -599,7 +603,7 @@ import java.util.Optional;
 
 
 
-public interface MemberRepository extends JpaRepository<Member, Long>, MemberRepositoryCustom {
+public interface MemberRepository extends JpaRepository<Member, Long>, MemberRepositoryCustom, JpaSpecificationExecutor{
 
     List<Member> findByUsernameAndAgeGreaterThan(String username, int age);
 
@@ -690,4 +694,23 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<Member> findLockByUsername(String username);
 
+
+    //---------section 7 projection
+    List<UsernameOnly> findProjectionByUsername(@Param("username") String username);
+
+    List<UsernameOnlyDto> findProjectionClassByUsername(@Param("username") String username);
+    //동적 projection -  //중첩구조 projection 테스트 가능
+    <T> List<T> findProjectionClassTypeByUsername(@Param("username") String username,Class<T> type);
+
+    //-----네이티브쿼리
+    @Query(value = "select * from member where username = ?", nativeQuery = true)
+    Member findByNativeQuery(String username);
+    @Query(value = "select username from member where username = ?", nativeQuery = true)
+    Member findByNativeQuery2(String username);
+
+    //projection을 통한 네이티브 쿼리
+    @Query(value = "select m.member_id as id, m.username, t.name as teamName " +
+            " from member m left join team t "
+            , countQuery = "select count(*) from member", nativeQuery = true)
+    Page<MemberProjection> findByNativeProjection(Pageable pageable);
 }
